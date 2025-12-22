@@ -7,15 +7,15 @@ module MoveBall_logic (
     input wire left,
     input wire right,
     input wire [49:0] brick_collision,
-    input wire [1:0]  game_state,  // 新增：游戏状态
-    input wire        game_reset,  // 新增：强制复位
+    input wire [1:0]  game_state, 
+    input wire        game_reset, 
     
     output reg [15:0] pix_data,
     output reg [9:0] ball_x, 
     output reg [9:0] ball_y,
     output reg [9:0] racket_x,
     output reg [9:0] racket_y,
-    output reg       lose_sig      // 新增：失败信号
+    output reg       lose_sig 
 );
 
     parameter H_VALID = 10'd640, V_VALID = 10'd480;
@@ -80,7 +80,7 @@ module MoveBall_logic (
         racket_x = racket_x_fp[RACKET_X_WIDTH-1 : FRAC_BITS];
     end
 
-    // 按键处理
+    /
     always @(posedge vga_clk or negedge sys_rst_n) begin
         if (!sys_rst_n) begin
             left_pressed <= 0;
@@ -91,14 +91,14 @@ module MoveBall_logic (
         end
     end
 
-    // 球拍移动 (任何时候只要不是暂停状态都可以动，这里我们允许在PLAY状态动)
+
     always @(posedge vga_clk or negedge sys_rst_n) begin
         if (!sys_rst_n) begin
             racket_x_fp <= 280 << FRAC_BITS;
             racket_move_cnt <= 0;
         end else if (game_reset) begin
-             racket_x_fp <= 280 << FRAC_BITS; // 复位球拍位置
-        end else if (game_state == 2'b01) begin // 只在PLAY状态允许移动
+             racket_x_fp <= 280 << FRAC_BITS; 
+        end else if (game_state == 2'b01) begin 
             racket_move_cnt <= racket_move_cnt + 1;
             
             if (racket_move_cnt >= RACKET_MOVE_DIV) begin
@@ -136,7 +136,6 @@ module MoveBall_logic (
         end
     end
 
-    // 小球物理移动
     always @(posedge vga_clk or negedge sys_rst_n) begin
         if (!sys_rst_n) begin
             ball_x_fp <= 320 << FRAC_BITS;
@@ -148,14 +147,14 @@ module MoveBall_logic (
             draw_move_cnt <= 0; 
             lose_sig <= 0;
         end else if (game_reset) begin
-            // 游戏复位逻辑
+
             ball_x_fp <= 320 << FRAC_BITS;
             ball_y_fp <= 240 << FRAC_BITS;
             ball_x_draw_fp <= 320 << FRAC_BITS; 
             ball_y_draw_fp <= 240 << FRAC_BITS; 
-            ball_dx <= 0; ball_dy <= 0; // 初始向上
+            ball_dx <= 0; ball_dy <= 0; 
             lose_sig <= 0;
-        end else if (game_state == 2'b01) begin // PLAY STATE
+        end else if (game_state == 2'b01) begin 
             
             ball_move_cnt <= ball_move_cnt + 1;
 
@@ -176,7 +175,7 @@ module MoveBall_logic (
 
                 if (next_ball_y_int <= BALL_RADIUS) next_ball_dy = 0; 
 
-                // 拍子碰撞
+                
                 if (next_ball_y_int >= racket_y - BALL_RADIUS && 
                     next_ball_y_int <= racket_y + RACKET_HEIGHT &&
                     next_ball_x_int >= racket_x_int_temp - RACKET_WIDTH/2 && 
@@ -188,9 +187,8 @@ module MoveBall_logic (
                     next_ball_dy = ~ball_dy; 
                 end
 
-                // 底部边界检测 -> 触发 LOSE
                 if (next_ball_y_int >= V_VALID - BALL_RADIUS) begin
-                    lose_sig <= 1; // 触发失败信号
+                    lose_sig <= 1; 
                 end else begin
                     ball_x_fp <= next_ball_x_fp;
                     ball_y_fp <= next_ball_y_fp;
@@ -198,8 +196,7 @@ module MoveBall_logic (
                     ball_dy <= next_ball_dy;
                 end
             end
-            
-            // 绘制插值
+        
             draw_move_cnt <= draw_move_cnt + 1;
             if (draw_move_cnt >= DRAW_MOVE_DIV - 1) begin
                 draw_move_cnt <= 0;
@@ -216,12 +213,11 @@ module MoveBall_logic (
         end
     end
     
-    // 绘图输出逻辑 (仅在 PLAY 模式下绘制球和拍子，其他模式在 vga_pic 中处理文字，这里输出黑即可)
     always @(*) begin
         is_ball = 1'b0;
         is_racket = 1'b0;
         
-        if (game_state == 2'b01) begin // 只有 PLAY 状态才画球和拍子
+        if (game_state == 2'b01) begin 
             dist_sq = (pix_x - ball_x) * (pix_x - ball_x) + (pix_y - ball_y) * (pix_y - ball_y);
             if (dist_sq <= (BALL_RADIUS * BALL_RADIUS)) is_ball = 1'b1;
 
@@ -234,8 +230,9 @@ module MoveBall_logic (
             else if (is_racket) pix_data = GREEN; 
             else pix_data = BLACK; 
         end else begin
-            pix_data = BLACK; // 非游戏状态输出黑，由上层决定是否覆盖
+            pix_data = BLACK; 
         end
     end
+
 
 endmodule
