@@ -22,28 +22,24 @@ module vga_pic(
     parameter BRICK_START_X = 10;
     parameter BRICK_START_Y = 30;
     parameter BG_COLOR      = 16'h0000;
-    
-    // 圆角半径
+
     parameter TEXT_RADIUS   = 3; 
 
-    // 颜色定义
     wire [15:0] ROW_COLORS [0:4];
-    assign ROW_COLORS[0] = 16'hF800; // 红
-    assign ROW_COLORS[1] = 16'hFD20; // 橙
-    assign ROW_COLORS[2] = 16'hFFE0; // 黄
-    assign ROW_COLORS[3] = 16'h07E0; // 绿
-    assign ROW_COLORS[4] = 16'h001F; // 蓝
+    assign ROW_COLORS[0] = 16'hF800;
+    assign ROW_COLORS[1] = 16'hFD20;
+    assign ROW_COLORS[2] = 16'hFFE0;
+    assign ROW_COLORS[3] = 16'h07E0;
+    assign ROW_COLORS[4] = 16'h001F;
 
     reg [49:0] brick_status; 
-    
-    // 特殊砖块变量
+
     reg [5:0] special_brick_id; 
     reg [5:0] lfsr_counter;     
     
     wire [9:0] brick_total_w = BRICK_WIDTH + BRICK_GAP;
     wire [9:0] brick_total_h = BRICK_HEIGHT + BRICK_GAP;
 
-    // 砖块索引计算
     wire [9:0] col_idx = (pix_x - BRICK_START_X) / brick_total_w;
     wire [9:0] row_idx = (pix_y - BRICK_START_Y) / brick_total_h;
     
@@ -57,7 +53,6 @@ module vga_pic(
     
     wire is_brick_pixel = valid_region && on_brick_face && brick_status[current_brick_id];
 
-    // 伪随机数生成器
     always @(posedge vga_clk or negedge sys_rst_n) begin
         if (!sys_rst_n) begin
             lfsr_counter <= 0;
@@ -69,7 +64,6 @@ module vga_pic(
         end
     end
 
-    // 砖块逻辑控制
     integer i;
     always @(posedge vga_clk or negedge sys_rst_n) begin
         if (!sys_rst_n) begin
@@ -96,7 +90,6 @@ module vga_pic(
         end
     end
 
-    // 碰撞检测逻辑
     integer r, c;
     always @(*) begin
         brick_collision = 50'b0; 
@@ -116,7 +109,6 @@ module vga_pic(
         end
     end
 
-    // 圆角矩形绘制函数
     function automatic is_round_rect;
         input [9:0] x_in, y_in;
         input [9:0] x1, y1, x2, y2; 
@@ -135,8 +127,7 @@ module vga_pic(
             is_round_rect = is_rect;
         end
     endfunction
-    
-    // 简易点阵字符显示逻辑
+
     reg is_text_pixel;
     wire [9:0] tx = pix_x; 
     wire [9:0] ty = pix_y;
@@ -150,10 +141,9 @@ module vga_pic(
     wire [12:0] r_lhs = r_y_diff * 6;
     wire [12:0] r_rhs = r_x_diff * 5;
 
-    // 文字绘制逻辑 (不变)
     always @(*) begin
         is_text_pixel = 0;
-        if (game_state == 2'b00) begin // START
+        if (game_state == 2'b00) begin
             // S
             if(is_round_rect(tx, ty, 180, 200, 220, 210, TEXT_RADIUS)) is_text_pixel = 1; 
             if(is_round_rect(tx, ty, 180, 225, 220, 235, TEXT_RADIUS)) is_text_pixel = 1; 
@@ -216,14 +206,13 @@ module vga_pic(
         end
     end
 
-    // 最终颜色输出
     always @(posedge vga_clk or negedge sys_rst_n) begin
         if (!sys_rst_n) brick_data <= BG_COLOR;
         else begin
-            if (game_state == 2'b01) begin // PLAY: 显示砖块
+            if (game_state == 2'b01) begin
                 if (is_brick_pixel) begin
                     if (current_brick_id == special_brick_id)
-                        brick_data <= 16'hFFFF; // 白颜色
+                        brick_data <= 16'hFFFF;
                     else if(row_idx < 5) 
                         brick_data <= ROW_COLORS[row_idx];
                     else 
@@ -232,15 +221,16 @@ module vga_pic(
                     brick_data <= BG_COLOR;
                 end
             end
-            else begin // START, WIN, END 状态
+            else begin // START, WIN, END 
                 case(game_state)
-                    2'b00: brick_data <= is_text_pixel ? 16'h07E0 : BG_COLOR; // START (绿色)
-                    2'b10: brick_data <= is_text_pixel ? 16'h001F : BG_COLOR; // WIN (蓝色)
-                    2'b11: brick_data <= is_text_pixel ? 16'hF800 : BG_COLOR; // END (红色)
+                    2'b00: brick_data <= is_text_pixel ? 16'h07E0 : BG_COLOR; // START
+                    2'b10: brick_data <= is_text_pixel ? 16'h001F : BG_COLOR; // WIN
+                    2'b11: brick_data <= is_text_pixel ? 16'hF800 : BG_COLOR; // END 
                     default: brick_data <= BG_COLOR;
                 endcase
             end
         end
     end
+
 
 endmodule
